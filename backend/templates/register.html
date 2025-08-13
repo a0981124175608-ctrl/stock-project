@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8" />
+    <title>註冊頁面</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000;
+            margin: 0; padding: 0;
+            font-family: Arial, sans-serif;
+            color: #fff;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh;
+        }
+
+        .register-box {
+            background-color: #1c1c1c;
+            padding: 40px 50px;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(255,255,255,0.1);
+            width: 420px;
+            text-align: center;
+        }
+
+        .register-box h2 {
+            margin-bottom: 25px;
+            color: #fff;
+            font-size: 24px;
+        }
+
+        label {
+            display: block;
+            text-align: left;
+            margin-bottom: 6px;
+            font-size: 15px;
+            color: #ccc;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 8px;
+            border: none;
+            border-radius: 6px;
+            background-color: #2e2e2e;
+            color: #fff;
+            font-size: 15px;
+        }
+
+        input[type="submit"] {
+            width: 100%;
+            padding: 12px;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #45a049;
+        }
+
+        .error-list {
+            margin: 0 0 15px 0;
+            padding-left: 20px;
+            color: #ff6b6b;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .back-to-login {
+            display: block;
+            margin-top: 18px;
+            text-decoration: none;
+            color: #4CAF50;
+            font-size: 14px;
+        }
+
+        .back-to-login:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="register-box">
+        <h2>會員註冊</h2>
+        <form method="POST" action="{{ url_for('auth.register') }}">
+            {{ form.hidden_tag() }}
+
+            <label for="username">使用者名稱：</label>
+            {{ form.username(size=32) }}
+            {% if form.username.errors %}
+                <ul class="error-list">
+                {% for error in form.username.errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+
+            <label for="email">Email：</label>
+            {{ form.email(size=32) }}
+            {% if form.email.errors %}
+                <ul class="error-list">
+                {% for error in form.email.errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+
+            <label for="password">密碼：</label>
+            {{ form.password(size=32) }}
+            {% if form.password.errors %}
+                <ul class="error-list">
+                {% for error in form.password.errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+
+            <label for="confirm_password">確認密碼：</label>
+            {{ form.confirm_password(size=32) }}
+            {% if form.confirm_password.errors %}
+                <ul class="error-list">
+                {% for error in form.confirm_password.errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+
+            {{ form.submit() }}
+        </form>
+
+        <a href="{{ url_for('auth.login') }}" class="back-to-login">已有帳號？登入</a>
+
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul class="error-list" style="color:#4CAF50; text-align:center;">
+                {% for message in messages %}
+                <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        {% endwith %}
+    </div>
+</body>
+</html>

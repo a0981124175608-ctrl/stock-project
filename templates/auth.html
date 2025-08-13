@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8" />
+    <title>會員系統</title>
+    <style>
+        /* 基本樣式略，可依需求美化 */
+        .hidden { display: none; }
+        .message { color: red; }
+    </style>
+</head>
+<body>
+    <div id="message" class="message"></div>
+
+    <!-- 登入區 -->
+    <div id="login-section">
+        <h2>登入</h2>
+        <form id="login-form">
+            <input type="email" name="email" placeholder="Email" required /><br/>
+            <input type="password" name="password" placeholder="密碼" required /><br/>
+            <button type="submit">登入</button>
+        </form>
+        <p>還沒有帳號？<a href="#" id="show-register">註冊</a></p>
+    </div>
+
+    <!-- 註冊區 -->
+    <div id="register-section" class="hidden">
+        <h2>註冊</h2>
+        <form id="register-form">
+            <input type="email" name="email" placeholder="Email" required /><br/>
+            <input type="text" name="username" placeholder="使用者名稱" required /><br/>
+            <input type="password" name="password" placeholder="密碼" required /><br/>
+            <input type="password" name="confirm_password" placeholder="確認密碼" required /><br/>
+            <button type="submit">註冊</button>
+        </form>
+        <p>已有帳號？<a href="#" id="show-login">登入</a></p>
+    </div>
+
+    <!-- 請驗證信箱區 -->
+    <div id="verify-section" class="hidden">
+        <h2>請驗證信箱</h2>
+        <p>我們已寄出驗證信到 <span id="verify-email"></span>，請到信箱點擊驗證連結。</p>
+        <button id="resend-email">重新寄送驗證信</button>
+        <p><a href="#" id="back-to-login">回登入頁</a></p>
+    </div>
+
+<script>
+    const messageEl = document.getElementById('message');
+    const loginSection = document.getElementById('login-section');
+    const registerSection = document.getElementById('register-section');
+    const verifySection = document.getElementById('verify-section');
+
+    // 切換顯示區塊
+    function showSection(section) {
+        loginSection.classList.add('hidden');
+        registerSection.classList.add('hidden');
+        verifySection.classList.add('hidden');
+        section.classList.remove('hidden');
+        messageEl.textContent = '';
+    }
+
+    document.getElementById('show-register').addEventListener('click', e => {
+        e.preventDefault();
+        showSection(registerSection);
+    });
+
+    document.getElementById('show-login').addEventListener('click', e => {
+        e.preventDefault();
+        showSection(loginSection);
+    });
+
+    document.getElementById('back-to-login').addEventListener('click', e => {
+        e.preventDefault();
+        showSection(loginSection);
+    });
+
+    // 登入表單提交
+    document.getElementById('login-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+
+        fetch('/api/login', {
+            method: 'POST',
+            body: formData
+        }).then(res => res.json()).then(data => {
+            if(data.success){
+                messageEl.style.color = 'green';
+                messageEl.textContent = data.message;
+                // 登入成功後跳轉主頁
+                setTimeout(() => window.location.href = '/', 1000);
+            } else {
+                messageEl.style.color = 'red';
+                messageEl.textContent = data.message;
+            }
+        });
+    });
+
+    // 註冊表單提交
+    document.getElementById('register-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+
+        fetch('/api/register', {
+            method: 'POST',
+            body: formData
+        }).then(res => res.json()).then(data => {
+            if(data.success){
+                messageEl.style.color = 'green';
+                messageEl.textContent = data.message;
+                document.getElementById('verify-email').textContent = formData.get('email');
+                showSection(verifySection);
+            } else {
+                messageEl.style.color = 'red';
+                messageEl.textContent = JSON.stringify(data.errors);
+            }
+        });
+    });
+
+    // 重新寄送驗證信（可依需求實作）
+    document.getElementById('resend-email').addEventListener('click', e => {
+        const email = document.getElementById('verify-email').textContent;
+        fetch('/api/register', { // 這裡應該是另一個API重寄信，我這裡示範
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({email})
+        }).then(res => res.json()).then(data => {
+            messageEl.style.color = data.success ? 'green' : 'red';
+            messageEl.textContent = data.message || '';
+        });
+    });
+
+    // 頁面載入時，如果 URL 有 token 參數，自動呼叫驗證API
+    window.addEventListener('load', () => {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+        if(token){
+            fetch('/api/verify?token=' + encodeURIComponent(token))
+            .then(res => res.json())
+            .then(data => {
+                messageEl.style.color = data.success ? 'green' : 'red';
+                messageEl.textContent = data.message;
+                if(data.success){
+                    showSection(loginSection);
+                    history.replaceState(null, '', '/auth'); // 去除 token 參數
+                }
+            });
+        }
+    });
+</script>
+</body>
+</html>

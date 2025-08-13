@@ -1,0 +1,17 @@
+
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>會員中心</title>
+</head>
+<body>
+    <h1>歡迎回來，{{ current_user.username }}！</h1>
+
+    <!-- 登出按鈕 -->
+    <form action="{{ url_for('auth.logout') }}" method="GET">
+        <button type="submit">登出</button>
+    </form>
+
+    <!-- 其他內容 -->
+</body>
+</html>

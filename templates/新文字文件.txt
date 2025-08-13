@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ stock_code }} 詳細資訊</title>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .section {
+            margin: 20px auto;
+            max-width: 1200px;
+            padding: 20px;
+            background-color: #1e1e1e;
+            border-radius: 8px;
+        }
+
+        .section h2 {
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .flex-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .left, .right {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        img.kchart {
+            width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+        }
+
+        .board {
+            background-color: #333;
+            padding: 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 第一格：K 線圖 -->
+    <div class="section">
+        <h2>{{ stock_code }} K 線圖</h2>
+        <img class="kchart" src="{{ url_for('static', filename='kcharts/' + stock_code + '.png') }}" alt="{{ stock_code }} K 線圖">
+    </div>
+
+    <!-- 第二格：五檔資料 -->
+    <div class="section">
+        <h2>即時五檔掛單</h2>
+        <!-- 放置五檔表格：建議用 WebSocket or 後端更新 -->
+        <div id="order-book">（這裡會顯示五檔資料）</div>
+    </div>
+
+    <!-- 第三格：成交量圖 + 成交紀錄 -->
+    <div class="section">
+        <h2>成交資訊</h2>
+        <div class="flex-row">
+            <div class="left">
+                <div id="volume-chart">（這裡是成交量圖）</div>
+            </div>
+            <div class="right">
+                <div id="tick-data">（這裡是即時成交紀錄）</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第四格：留言板 -->
+    <div class="section">
+        <h2>留言板</h2>
+        {% if current_user.is_authenticated %}
+            <form method="POST" action="{{ url_for('board.post_message', stock_code=stock_code) }}">
+                <textarea name="message" rows="4" cols="80" required></textarea><br>
+                <button type="submit">送出留言</button>
+            </form>
+        {% else %}
+            <p>請先登入才能留言。</p>
+        {% endif %}
+
+        <div class="board">
+            {% for message in messages %}
+                <p><strong>{{ message.user.username }}：</strong>{{ message.content }} <em>（{{ message.timestamp }}）</em></p>
+            {% endfor %}
+        </div>
+    </div>
+
+</body>
+</html>

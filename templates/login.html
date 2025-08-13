@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>登入頁面</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .login-box {
+            background-color: #1c1c1c;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+            width: 300px;
+            text-align: center;
+        }
+
+        .login-box h2 {
+            margin-bottom: 20px;
+            color: #ffffff;
+        }
+
+        .login-box label {
+            display: block;
+            text-align: left;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+
+        .login-box input[type="email"],
+        .login-box input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #2e2e2e;
+            color: #fff;
+        }
+
+        .login-box input[type="submit"],
+        .register-button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .register-button:hover {
+            background-color: #45a049;
+        }
+
+        .flashes {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 15px;
+        }
+
+        .flashes li {
+            background-color: #e0f7fa;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            font-weight: bold;
+            text-align: center;
+            color: #00796b;
+        }
+
+        #verification-message {
+            margin-top: 10px;
+            color: #ff5252;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class="flashes">
+                    {% for message in messages %}
+                        <li>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <h2>會員登入</h2>
+        <form method="POST" action="{{ url_for('auth.login') }}">
+            <label for="email">Email：</label>
+            <input type="email" name="email" required>
+            <label for="password">密碼：</label>
+            <input type="password" name="password" required>
+            <input type="submit" value="登入">
+        </form>
+
+        <div id="verification-message"></div>
+
+        <a href="{{ url_for('auth.register') }}" class="register-button">還沒有帳號？註冊</a>
+    </div>
+
+    <script>
+        // 自動淡出 flash 訊息
+        setTimeout(() => {
+            const flashes = document.querySelectorAll(".flashes li");
+            flashes.forEach(msg => {
+                msg.style.opacity = 0;
+                setTimeout(() => msg.remove(), 500);
+            });
+        }, 2000);
+
+        // 即時檢查信箱驗證狀態
+        let emailField = document.querySelector('input[name="email"]');
+        let verificationMessage = document.getElementById('verification-message');
+
+        function checkVerificationStatus() {
+            let email = emailField.value;
+            if (!email) return;
+
+            fetch(`/check_verification_status?email=${encodeURIComponent(email)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.verified) {
+                        verificationMessage.innerText = "✅ 已完成信箱驗證，您可以登入";
+                        verificationMessage.style.color = "#4CAF50";
+                    } else {
+                        verificationMessage.innerText = "⚠️ 尚未完成信箱驗證，請至信箱點擊驗證連結";
+                        verificationMessage.style.color = "#ff5252";
+                    }
+                });
+        }
+
+        setInterval(checkVerificationStatus, 5000);
+    </script>
+</body>
+</html>
