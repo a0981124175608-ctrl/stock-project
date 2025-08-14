@@ -17,7 +17,9 @@ from routes.index import index_bp
 from routes.member import member_bp
 from config import Config
 from routes.stock import stock_bp
-from routes.board import board_bp 
+from routes.board import board_bp
+
+ 
 load_dotenv()  # 讀取 .env 檔案
 
 def create_app():

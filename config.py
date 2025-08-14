@@ -22,3 +22,4 @@ class Config:
     MAIL_USERNAME = os.getenv("MAIL_USERNAME")
     MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
     DOMAIN = 'http://127.0.0.1:5000'
+print(os.getenv("SECRET_KEY"))

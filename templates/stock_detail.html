@@ -11,7 +11,6 @@
             margin: 0;
             padding: 0;
         }
-
         .section {
             margin: 20px auto;
             max-width: 1200px;
@@ -19,36 +18,30 @@
             background-color: #1e1e1e;
             border-radius: 8px;
         }
-
         .section h2 {
             border-bottom: 1px solid #444;
             padding-bottom: 10px;
             margin-bottom: 20px;
         }
-
         .flex-row {
             display: flex;
             gap: 20px;
             flex-wrap: wrap;
         }
-
         .left, .right {
             flex: 1;
             min-width: 300px;
         }
-
         img.kchart {
             width: 100%;
             max-height: 400px;
             object-fit: contain;
         }
-
         .board {
             background-color: #333;
             padding: 10px;
             border-radius: 4px;
         }
-
         .live-chat {
             background-color: transparent;
             padding: 10px;
@@ -59,21 +52,26 @@
             border-top: 1px solid #444;
             border-bottom: 1px solid #444;
         }
-
         .chat-message {
             color: #eee;
             margin-bottom: 6px;
         }
-
         .chat-message .username {
             color: #4dd0e1;
             font-weight: bold;
         }
-
         .chat-message .timestamp {
             color: #888;
             font-size: 12px;
             margin-left: 6px;
+        }
+        .favorite-btn {
+            background: none;
+            border: none;
+            color: red;
+            font-size: 20px;
+            cursor: pointer;
+            margin-left: 10px;
         }
     </style>
 </head>
@@ -82,30 +80,35 @@
   <a href="{{ url_for('auth.logout') }}" style="color: white; text-decoration: none;">登出</a>
 </div>
 
-    <!-- 第一格：K 線圖 -->
-    <div class="section">
-        <h2>{{ stock_code }} K 線圖</h2>
-        <img class="kchart" src="{{ url_for('static', filename='kcharts/' + stock_code + '.png') }}" alt="{{ stock_code }} K 線圖">
-    </div>
+<!-- 第一格：K 線圖 + 愛心按鈕 -->
+<div class="section">
+    <h2>
+        {{ stock_code }} K 線圖
+        <button class="favorite-btn" data-stock="{{ stock_code }}">
+            {% if stock_code in user_favorites %} ❤️ {% else %} 🤍 {% endif %}
+        </button>
+    </h2>
+    <img class="kchart" src="{{ url_for('static', filename='kcharts/' + stock_code + '.png') }}" alt="{{ stock_code }} K 線圖">
+</div>
 
-    <!-- 第二格：五檔資料 -->
-    <div class="section">
-        <h2>即時五檔掛單</h2>
-        <div id="order-book">（這裡會顯示五檔資料）</div>
-    </div>
+<!-- 第二格：五檔資料 -->
+<div class="section">
+    <h2>即時五檔掛單</h2>
+    <div id="order-book">（這裡會顯示五檔資料）</div>
+</div>
 
-    <!-- 第三格：成交量圖 + 成交紀錄 -->
-    <div class="section">
-        <h2>成交資訊</h2>
-        <div class="flex-row">
-            <div class="left">
-                <div id="volume-chart">（這裡是成交量圖）</div>
-            </div>
-            <div class="right">
-                <div id="tick-data">（這裡是即時成交紀錄）</div>
-            </div>
+<!-- 第三格：成交量圖 + 成交紀錄 -->
+<div class="section">
+    <h2>成交資訊</h2>
+    <div class="flex-row">
+        <div class="left">
+            <div id="volume-chart">（這裡是成交量圖）</div>
+        </div>
+        <div class="right">
+            <div id="tick-data">（這裡是即時成交紀錄）</div>
         </div>
     </div>
+</div>
 
 <!-- 第四格：留言板 -->
 <div class="section">
@@ -120,7 +123,7 @@
     <p style="color: #aaa;">請先登入才能留言。</p>
     {% endif %}
 
-    <div class="live-chat" style="max-height: 400px; overflow-y: auto; font-size: 15px; line-height: 1.6; border-top: 1px solid #444; border-bottom: 1px solid #444;">
+    <div class="live-chat">
         {% for message in messages %}
         <div class="chat-message">
             <span class="username">{{ message.user.username }}</span>：
@@ -135,43 +138,51 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // 留言板 AJAX
     const form = document.getElementById('messageForm');
-    if (!form) return;
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const message = formData.get('message').trim();
+            if (!message) { alert('留言不能為空白'); return; }
 
-    form.addEventListener('submit', function(e) {
-        e.preventDefault(); // 阻止預設送出刷新
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const liveChat = document.querySelector('.live-chat');
+                    const newMsg = document.createElement('div');
+                    newMsg.classList.add('chat-message');
+                    newMsg.innerHTML = `<span class="username">${data.username}</span>：<span class="content">${data.content}</span><span class="timestamp">（${data.local_time}）</span>`;
+                    liveChat.appendChild(newMsg);
+                    form.reset();
+                    liveChat.scrollTop = liveChat.scrollHeight;
+                } else { alert(data.error || '留言失敗'); }
+            })
+            .catch(err => { alert('伺服器錯誤'); console.error(err); });
+        });
+    }
 
-        const formData = new FormData(form);
-        const message = formData.get('message').trim();
-        if (!message) {
-            alert('留言不能為空白');
-            return;
-        }
-
-        fetch(form.action, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const liveChat = document.querySelector('.live-chat');
-                const newMsg = document.createElement('div');
-                newMsg.classList.add('chat-message');
-                newMsg.innerHTML = `<span class="username">${data.username}</span>：<span class="content">${data.content}</span><span class="timestamp">（${data.local_time}）</span>`;
-                liveChat.appendChild(newMsg);
-                form.reset();
-                liveChat.scrollTop = liveChat.scrollHeight; // 滾動到底部
-            } else {
-                alert(data.error || '留言失敗');
-            }
-        })
-        .catch(err => {
-            alert('伺服器錯誤，請稍後再試');
-            console.error(err);
+    // 愛心按鈕 AJAX
+    document.querySelectorAll('.favorite-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const stockCode = btn.dataset.stock;
+            fetch('/stock/favorite/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ stock_code: stockCode })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) btn.textContent = data.favorited ? '❤️' : '🤍';
+                else alert('操作失敗');
+            })
+            .catch(err => console.error(err));
         });
     });
 });
