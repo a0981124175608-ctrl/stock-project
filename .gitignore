@@ -20,3 +20,12 @@ Thumbs.db
 
 # Logs
 *.log
+
+# SQLite database & instance folders
+instance/
+backend/instance/
+*.sqlite3
+
+# 靜態檔案（如果不想推上 GitHub）
+static/
+backend/static/
