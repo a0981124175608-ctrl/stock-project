@@ -19,7 +19,8 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     is_verified = db.Column(db.Boolean, default=False)  # 信箱是否已驗證
-
+    favorites = db.relationship('Favorite', backref='user', lazy=True)
+    
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
@@ -38,9 +39,5 @@ class User(db.Model, UserMixin):
        except Exception:
            return None
        # models/user.py
-class Favorite(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    stock_code = db.Column(db.String(10), nullable=False)
 
-    user = db.relationship('User', backref=db.backref('favorites', lazy='dynamic'))
+

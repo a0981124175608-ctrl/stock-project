@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>我的收藏</title>
+<style>
+    body {
+        background-color: black;
+        color: white;
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* 左上角固定選單 */
+    .top-right {
+        position: fixed;
+        top: 10px;
+        right: 20px;
+        z-index: 1000;
+        font-weight: bold;
+        display: flex;
+        gap: 15px;
+    }
+    .top-right a {
+        color: white;
+        text-decoration: none;
+    }
+
+    /* 中間搜尋框 */
+    .search-section {
+        display: flex;
+        justify-content: center;
+        margin-top: 80px;
+        gap: 10px;
+    }
+    .search-section input {
+        padding: 6px 10px;
+        width: 200px;
+        border-radius: 4px;
+        border: 1px solid #444;
+        background-color: #111;
+        color: white;
+    }
+    .search-section button {
+        padding: 6px 12px;
+        border-radius: 4px;
+        border: none;
+        background-color: #28a745;
+        color: white;
+        cursor: pointer;
+    }
+
+    /* 收藏股票列表 */
+    .favorite-stock {
+        max-width: 1000px;
+        width: 90%;
+        margin: 40px auto;
+        text-align: center;
+    }
+    .favorite-stock h2 {
+        margin-bottom: 10px;
+    }
+    .favorite-stock img {
+        width: 100%;
+        max-height: 400px;
+        object-fit: contain;
+    }
+
+    /* 搜尋結果列表 */
+    #searchResult div {
+        margin-bottom: 10px;
+    }
+    #searchResult button {
+        margin-left: 10px;
+        padding: 4px 8px;
+        border: none;
+        border-radius: 4px;
+        background-color: #e74c3c;
+        color: white;
+        cursor: pointer;
+    }
+</style>
+</head>
+<body>
+
+<!-- 左上角固定選單 -->
+<div class="top-right">
+    <a href="{{ url_for('stock.my_favorites') }}">我的收藏</a>
+    <a href="{{ url_for('auth.logout') }}">登出</a>
+</div>
+
+<!-- 中間搜尋 -->
+<form id="searchForm" class="search-section">
+    <input type="text" id="searchInput" placeholder="輸入股票代碼或名稱...">
+    <button type="submit">搜尋</button>
+</form>
+<div id="searchResult" style="text-align:center; margin-top:20px;"></div>
+
+<!-- 收藏股票列表 -->
+{% for stock in favorites %}
+<div class="favorite-stock">
+    <h2>{{ stock.stock_code }}</h2> <!-- 或 {{ stock }} 如果 favorites 是字串列表 -->
+    <img src="{{ url_for('static', filename='kcharts/' + stock.stock_code + '.png') }}" alt="{{ stock.stock_code }} K線圖">
+</div>
+{% else %}
+<p style="text-align:center;">目前沒有收藏的股票</p>
+{% endfor %}
+
+<script>
+// 搜尋 AJAX
+document.getElementById('searchForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    const query = document.getElementById('searchInput').value.trim();
+    if(!query) return alert('請輸入股票代碼或名稱');
+
+    fetch(`/stock/search?query=${encodeURIComponent(query)}`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(res => res.json())
+    .then(data => {
+        const resultDiv = document.getElementById('searchResult');
+        resultDiv.innerHTML = '';
+        if(data.stocks && data.stocks.length > 0){
+            data.stocks.forEach(stock => {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <strong>${stock.name}（${stock.code}）</strong>
+                    <button data-stock="${stock.code}" class="addFavoriteBtn">加入收藏</button>
+                `;
+                resultDiv.appendChild(div);
+
+                div.querySelector('.addFavoriteBtn').addEventListener('click', function() {
+                    fetch(`/stock/toggle_favorite`, {
+                        method:'POST',
+                        headers:{
+                            'Content-Type':'application/json',
+                            'X-Requested-With':'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({stock_code: stock.code})
+                    })
+                    .then(res => res.json())
+                    .then(resp => {
+                        if(resp.status==='added') alert(`${stock.code} 已加入收藏`);
+                        else if(resp.status==='removed') alert(`${stock.code} 已從收藏移除`);
+                    });
+                });
+            });
+        } else {
+            resultDiv.innerHTML = '<p style="color:#ccc;">找不到符合的股票</p>';
+        }
+    });
+});
+</script>
+
+</body>
+</html>

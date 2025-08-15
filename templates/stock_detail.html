@@ -22,6 +22,9 @@
             border-bottom: 1px solid #444;
             padding-bottom: 10px;
             margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         .flex-row {
             display: flex;
@@ -68,24 +71,30 @@
         .favorite-btn {
             background: none;
             border: none;
-            color: red;
-            font-size: 20px;
             cursor: pointer;
-            margin-left: 10px;
+            font-size: 20px;
+            color: gray;
+            transition: color 0.2s ease;
+        }
+        .favorite-btn.active {
+            color: red;
         }
     </style>
 </head>
 <body>
-<div style="position: fixed; top: 10px; right: 20px; z-index: 1000; font-weight: bold; color: white; cursor: pointer;">
-  <a href="{{ url_for('auth.logout') }}" style="color: white; text-decoration: none;">登出</a>
+
+<!-- 🔹 新增右上角固定選單：我的收藏 + 登出 -->
+<div style="position: fixed; top: 10px; right: 20px; z-index: 1000; font-weight: bold; color: white; display: flex; gap: 15px;">
+    <a href="{{ url_for('stock.my_favorites') }}" style="color: white; text-decoration: none;">我的收藏</a> <!-- 新增 -->
+    <a href="{{ url_for('auth.logout') }}" style="color: white; text-decoration: none;">登出</a> <!-- 原本就有的登出 -->
 </div>
 
 <!-- 第一格：K 線圖 + 愛心按鈕 -->
 <div class="section">
     <h2>
         {{ stock_code }} K 線圖
-        <button class="favorite-btn" data-stock="{{ stock_code }}">
-            {% if stock_code in user_favorites %} ❤️ {% else %} 🤍 {% endif %}
+        <button class="favorite-btn {% if stock_code in user_favorites %}active{% endif %}" id="favoriteBtn" data-stock="{{ stock_code }}">
+            ❤
         </button>
     </h2>
     <img class="kchart" src="{{ url_for('static', filename='kcharts/' + stock_code + '.png') }}" alt="{{ stock_code }} K 線圖">
@@ -138,6 +147,29 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // 收藏愛心 AJAX
+    const favBtn = document.getElementById('favoriteBtn');
+    favBtn.addEventListener('click', function() {
+        const stockCode = favBtn.dataset.stock;
+        fetch(`/stock/toggle_favorite`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ stock_code: stockCode }) // 🔹 修正：傳遞股票代碼
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'added') {
+                favBtn.classList.add('active');
+            } else if (data.status === 'removed') {
+                favBtn.classList.remove('active');
+            }
+        })
+        .catch(err => console.error(err));
+    });
+
     // 留言板 AJAX
     const form = document.getElementById('messageForm');
     if (form) {
@@ -162,29 +194,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     liveChat.appendChild(newMsg);
                     form.reset();
                     liveChat.scrollTop = liveChat.scrollHeight;
-                } else { alert(data.error || '留言失敗'); }
+                } else {
+                    alert(data.error || '留言失敗');
+                }
             })
-            .catch(err => { alert('伺服器錯誤'); console.error(err); });
+            .catch(err => {
+                alert('伺服器錯誤');
+                console.error(err);
+            });
         });
     }
-
-    // 愛心按鈕 AJAX
-    document.querySelectorAll('.favorite-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const stockCode = btn.dataset.stock;
-            fetch('/stock/favorite/toggle', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                body: JSON.stringify({ stock_code: stockCode })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) btn.textContent = data.favorited ? '❤️' : '🤍';
-                else alert('操作失敗');
-            })
-            .catch(err => console.error(err));
-        });
-    });
 });
 </script>
 </body>

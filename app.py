@@ -18,7 +18,7 @@ from routes.member import member_bp
 from config import Config
 from routes.stock import stock_bp
 from routes.board import board_bp
-
+from flask_migrate import Migrate
  
 load_dotenv()  # 讀取 .env 檔案
 
@@ -26,7 +26,7 @@ def create_app():
     app=Flask(__name__)
     # 設定（暫時簡化，之後可拆成 config.py）
     app.config.from_object(Config)
-    
+    migrate = Migrate(app, db) 
     
     # 初始化擴充套件
     db.init_app(app)
