@@ -24,11 +24,8 @@
 
                 <!-- 標題 + 搜尋 -->
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding:10px 16px;">
-                    <a id="title-{{ code }}" href="{{ url_for('stock.stock_detail', stock_code=code) }}" style="
-                        text-decoration: none; 
-                        color: #333; 
-                        font-weight: bold; 
-                        font-size: 18px;">
+                    <a id="title-{{ code }}" href="{{ url_for('stock.stock_detail', stock_code=code) }}" 
+                       style="text-decoration: none; color: #333; font-weight: bold; font-size: 18px;">
                         {{ name }}（{{ code }}）
                     </a>
                     <div>
@@ -48,18 +45,30 @@
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <script>
     // 繪製 K 線圖函式
-    async function drawKline(stockCode, targetDiv) {
+    async function drawKline(stockCode, targetDiv, titleId=null) {
         try {
             const res = await fetch(`/stock/kline/${stockCode}`);
             if (!res.ok) {
                 console.error('Fetch failed for', stockCode, res.status);
                 return;
             }
-            const data = await res.json();
-            console.log('K線資料', stockCode, data);
+            const result = await res.json();
 
-            if (!data || data.length === 0) return;
+            if (!result || !result.kline || result.kline.length === 0) {
+                document.getElementById(targetDiv).innerHTML =
+                  "<p style='color:red;text-align:center;'>查無K線資料</p>";
+                return;
+            }
 
+            // 更新標題文字和連結
+            if (titleId && result.name) {
+                const titleEl = document.getElementById(titleId);
+                titleEl.textContent = `${result.name}（${result.code}）`;
+                titleEl.href = `/stock/detail/${result.code}`;
+            }
+
+            // 畫圖
+            const data = result.kline;
             const trace = {
                 x: data.map(d => d.date),
                 open: data.map(d => d.open),
@@ -67,8 +76,8 @@
                 low: data.map(d => d.low),
                 close: data.map(d => d.close),
                 type: 'candlestick',
-                increasing: {line: {color: 'green'}},
-                decreasing: {line: {color: 'red'}}
+                increasing: { line: { color: 'green' } },
+                decreasing: { line: { color: 'red' } }
             };
 
             const layout = {
@@ -77,40 +86,25 @@
                 yaxis: { autorange: true }
             };
 
-            Plotly.newPlot(targetDiv, [trace], layout, {displayModeBar: false});
+            Plotly.newPlot(targetDiv, [trace], layout, { displayModeBar: false });
         } catch (err) {
             console.error('Error drawing Kline for', stockCode, err);
         }
     }
 
-    // 初始繪製（原本六張圖）
+    // 初始繪製
     {% for code, name in stocks.items() %}
-    drawKline('{{ code }}', 'kline-{{ code }}');
+    drawKline('{{ code }}', 'kline-{{ code }}', 'title-{{ code }}');
     {% endfor %}
 
-    // 更新指定卡片的 K 線圖 + 股票名稱
-    async function updateKline(originalCode) {
+    // 更新指定卡片的 K 線圖 + 標題
+    function updateKline(originalCode) {
         const input = document.getElementById(`search-${originalCode}`);
         const newCode = input.value.trim();
         if (!newCode) return;
 
-        // 更新 K 線圖
-        drawKline(newCode, `kline-${originalCode}`);
-
-        // 更新標題名稱
-        try {
-            const res = await fetch(`/stock_name/${newCode}`);
-            if (res.ok) {
-                const info = await res.json();
-                if (info && info.name) {
-                    const titleEl = document.getElementById(`title-${originalCode}`);
-                    titleEl.textContent = `${info.name}（${info.code}）`;
-                    titleEl.href = `/stock/${info.code}`;
-                }
-            }
-        } catch (err) {
-            console.error('Error fetching stock name for', newCode, err);
-        }
+        drawKline(newCode, `kline-${originalCode}`, `title-${originalCode}`);
     }
 </script>
+
 {% endblock %}

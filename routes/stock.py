@@ -88,10 +88,13 @@ def search_stock():
 def get_kline(stock_code):
     try:
         ticker = yf.Ticker(f"{stock_code}.TW")
-        df = ticker.history(period="60d", interval="1d")  # 最近60天日線
+        info = ticker.info
+        name = info.get("longName", info.get("shortName", stock_code))
+
+        df = ticker.history(period="180d", interval="1d")
 
         data = []
-        for date, row in df.iterrows():
+        for date, row in df.iterrows():   # ⭐ 注意縮排
             data.append({
                 "date": date.strftime("%Y-%m-%d"),
                 "open": row["Open"],
@@ -100,10 +103,14 @@ def get_kline(stock_code):
                 "close": row["Close"],
                 "volume": row["Volume"]
             })
-        return jsonify(data)
+
+        return jsonify({
+            "name": name,
+            "kline": data
+        })
     except Exception as e:
         return jsonify({"error": str(e)})
-    
+        return jsonify({"error": str(e)})
 @stock_bp.route('/stock_name/<stock_code>')
 @login_required
 def get_stock_name(stock_code):

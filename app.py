@@ -45,7 +45,7 @@ def create_app():
     app.register_blueprint(auth_bp,)
     app.register_blueprint(member_bp)
     app.register_blueprint(index_bp)
-    app.register_blueprint(stock_bp)
+    app.register_blueprint(stock_bp, url_prefix='/stock')
     app.register_blueprint(board_bp)
     
   
