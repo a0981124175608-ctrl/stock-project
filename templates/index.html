@@ -21,18 +21,96 @@
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); 
                 display: flex; 
                 flex-direction: column;">
-                <a href="{{ url_for('stock.stock_detail', stock_code=code) }}" style="
-                    text-decoration: none; 
-                    color: #333; 
-                    font-weight: bold; 
-                    padding: 16px; 
-                    font-size: 18px; 
-                    border-bottom: 1px solid #eee;">
-                    {{ name }}（{{ code }}）
-                </a>
-                <img src="{{ url_for('static', filename='kcharts/' + code + '.png') }}" alt="{{ name }} K線圖" style="width:100%; height:250px; object-fit:cover;">
+
+                <!-- 標題 + 搜尋 -->
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding:10px 16px;">
+                    <a id="title-{{ code }}" href="{{ url_for('stock.stock_detail', stock_code=code) }}" style="
+                        text-decoration: none; 
+                        color: #333; 
+                        font-weight: bold; 
+                        font-size: 18px;">
+                        {{ name }}（{{ code }}）
+                    </a>
+                    <div>
+                        <input type="text" id="search-{{ code }}" placeholder="輸入代碼" style="width:90px; padding:2px 5px; font-size:14px;">
+                        <button onclick="updateKline('{{ code }}')" style="padding:2px 6px; font-size:14px;">搜尋</button>
+                    </div>
+                </div>
+
+                <!-- K 線圖 -->
+                <div id="kline-{{ code }}" style="width:100%; height:250px;"></div>
             </div>
         {% endfor %}
     </div>
 </div>
+
+<!-- Plotly -->
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+    // 繪製 K 線圖函式
+    async function drawKline(stockCode, targetDiv) {
+        try {
+            const res = await fetch(`/stock/kline/${stockCode}`);
+            if (!res.ok) {
+                console.error('Fetch failed for', stockCode, res.status);
+                return;
+            }
+            const data = await res.json();
+            console.log('K線資料', stockCode, data);
+
+            if (!data || data.length === 0) return;
+
+            const trace = {
+                x: data.map(d => d.date),
+                open: data.map(d => d.open),
+                high: data.map(d => d.high),
+                low: data.map(d => d.low),
+                close: data.map(d => d.close),
+                type: 'candlestick',
+                increasing: {line: {color: 'green'}},
+                decreasing: {line: {color: 'red'}}
+            };
+
+            const layout = {
+                margin: { t: 20, b: 30 },
+                xaxis: { rangeslider: { visible: false } },
+                yaxis: { autorange: true }
+            };
+
+            Plotly.newPlot(targetDiv, [trace], layout, {displayModeBar: false});
+        } catch (err) {
+            console.error('Error drawing Kline for', stockCode, err);
+        }
+    }
+
+    // 初始繪製（原本六張圖）
+    {% for code, name in stocks.items() %}
+    drawKline('{{ code }}', 'kline-{{ code }}');
+    {% endfor %}
+
+    // 更新指定卡片的 K 線圖 + 股票名稱
+    async function updateKline(originalCode) {
+        const input = document.getElementById(`search-${originalCode}`);
+        const newCode = input.value.trim();
+        if (!newCode) return;
+
+        // 更新 K 線圖
+        drawKline(newCode, `kline-${originalCode}`);
+
+        // 更新標題名稱
+        try {
+            const res = await fetch(`/stock_name/${newCode}`);
+            if (res.ok) {
+                const info = await res.json();
+                if (info && info.name) {
+                    const titleEl = document.getElementById(`title-${originalCode}`);
+                    titleEl.textContent = `${info.name}（${info.code}）`;
+                    titleEl.href = `/stock/${info.code}`;
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching stock name for', newCode, err);
+        }
+    }
+</script>
 {% endblock %}

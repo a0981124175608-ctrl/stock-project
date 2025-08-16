@@ -11,6 +11,9 @@ from models.message import Message
 from models.favorite import Favorite
 from extensions import db
 from pytz import timezone
+import requests
+import yfinance as yf
+
 
 stock_bp = Blueprint('stock', __name__, url_prefix='/stock')
 
@@ -58,3 +61,56 @@ def my_favorites():
     favorites = Favorite.query.filter_by(user_id=current_user.id).all()
     return render_template('my_favorites.html', favorites=favorites)
     
+# 即時股票搜尋（yfinance）
+@stock_bp.route('/search', methods=['GET'])
+@login_required
+def search_stock():
+    query = request.args.get('query', '').strip()
+    if not query:
+        return jsonify({"stocks": []})
+
+    try:
+        ticker = yf.Ticker(f"{query}.TW")  # 台股代碼要加 .TW
+        info = ticker.info
+        result = {
+            "code": query,
+            "name": info.get("shortName", ""),
+            "price": info.get("regularMarketPrice", 0),
+            "change": info.get("regularMarketChange", 0),
+            "volume": info.get("regularMarketVolume", 0)
+        }
+        return jsonify({"stocks": [result]})
+    except Exception as e:
+        return jsonify({"stocks": [], "error": str(e)})
+    
+@stock_bp.route('/kline/<stock_code>')
+@login_required
+def get_kline(stock_code):
+    try:
+        ticker = yf.Ticker(f"{stock_code}.TW")
+        df = ticker.history(period="60d", interval="1d")  # 最近60天日線
+
+        data = []
+        for date, row in df.iterrows():
+            data.append({
+                "date": date.strftime("%Y-%m-%d"),
+                "open": row["Open"],
+                "high": row["High"],
+                "low": row["Low"],
+                "close": row["Close"],
+                "volume": row["Volume"]
+            })
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)})
+    
+@stock_bp.route('/stock_name/<stock_code>')
+@login_required
+def get_stock_name(stock_code):
+    try:
+        ticker = yf.Ticker(f"{stock_code}.TW")
+        info = ticker.info
+        name = info.get("longName", info.get("shortName", stock_code))
+        return jsonify({"code": stock_code, "name": name})
+    except Exception as e:
+        return jsonify({"error": str(e)})
