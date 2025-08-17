@@ -1,256 +1,254 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <title>{{ stock_code }} 詳細資訊</title>
-    <style>
-        body {
-            background-color: black;
-            color: white;
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
+  <meta charset="UTF-8" />
+  <title>{{ stock_code }} 詳細資訊</title>
 
-        .section {
-            margin: 20px auto;
-            max-width: 1200px;
-            padding: 20px;
-            background-color: #1e1e1e;
-            border-radius: 8px;
-        }
+  <!-- Socket.IO & Plotly -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
-        .section h2 {
-            border-bottom: 1px solid #444;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .flex-row {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
-        .left, .right {
-            flex: 1;
-            min-width: 300px;
-        }
-
-        .board {
-            background-color: #333;
-            padding: 10px;
-            border-radius: 4px;
-        }
-
-        .live-chat {
-            background-color: transparent;
-            padding: 10px;
-            max-height: 400px;
-            overflow-y: auto;
-            font-size: 15px;
-            line-height: 1.6;
-            border-top: 1px solid #444;
-            border-bottom: 1px solid #444;
-        }
-
-        .chat-message {
-            color: #eee;
-            margin-bottom: 6px;
-        }
-
-        .chat-message .username {
-            color: #4dd0e1;
-            font-weight: bold;
-        }
-
-        .chat-message .timestamp {
-            color: #888;
-            font-size: 12px;
-            margin-left: 6px;
-        }
-
-        .favorite-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 20px;
-            color: gray;
-            transition: color 0.2s ease;
-        }
-
-        .favorite-btn.active {
-            color: red;
-        }
-    </style>
+  <style>
+    body { background-color: black; color: white; font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    .section { margin: 20px auto; max-width: 1200px; padding: 20px; background-color: #1e1e1e; border-radius: 8px; }
+    .section h2 { border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+    .flex-row { display: flex; gap: 20px; flex-wrap: wrap; }
+    .left, .right { flex: 1; min-width: 300px; }
+    .board { background-color: #333; padding: 10px; border-radius: 4px; }
+    .live-chat { background-color: transparent; padding: 10px; max-height: 400px; overflow-y: auto; font-size: 15px; line-height: 1.6; border-top: 1px solid #444; border-bottom: 1px solid #444; }
+    .chat-message { color: #eee; margin-bottom: 6px; }
+    .chat-message .username { color: #4dd0e1; font-weight: bold; }
+    .chat-message .timestamp { color: #888; font-size: 12px; margin-left: 6px; }
+    .favorite-btn { background: none; border: none; cursor: pointer; font-size: 20px; color: gray; transition: color 0.2s ease; }
+    .favorite-btn.active { color: red; }
+  </style>
 </head>
 <body>
-    <!-- 右上角固定選單 -->
-    <div style="position: fixed; top: 10px; right: 20px; z-index: 1000; font-weight: bold; color: white; display: flex; gap: 15px;">
-        <a href="{{ url_for('stock.my_favorites') }}" style="color: white; text-decoration: none;">我的收藏</a>
-        <a href="{{ url_for('auth.logout') }}" style="color: white; text-decoration: none;">登出</a>
-    </div>
+  <!-- 右上角固定選單 -->
+  <div style="position: fixed; top: 10px; right: 20px; z-index: 1000; font-weight: bold; color: white; display: flex; gap: 15px;">
+    <a href="{{ url_for('stock.my_favorites') }}" style="color: white; text-decoration: none;">我的收藏</a>
+    <a href="{{ url_for('auth.logout') }}" style="color: white; text-decoration: none;">登出</a>
+  </div>
 
-    <!-- 第一格：K線圖 + 愛心 -->
-    <div class="section">
-        <h2>
-            <a id="title-{{ stock_code }}" href="{{ url_for('stock.stock_detail', stock_code=stock_code) }}" 
-               style="color: white; text-decoration: none;">
-                {{ stock_code }} K 線圖
-            </a>
-            <button class="favorite-btn {% if stock_code in user_favorites %}active{% endif %}" 
-                    id="favoriteBtn" data-stock="{{ stock_code }}"> ❤ </button>
-        </h2>
-        <div id="kline-detail" style="width:100%; height:400px;"></div>
-    </div>
+  <!-- 第一格：K線圖 + 愛心 -->
+  <div class="section">
+    <h2>
+      <a id="title-{{ stock_code }}" href="{{ url_for('stock.stock_detail', stock_code=stock_code) }}" style="color: white; text-decoration: none;">
+        {{ stock_code }} K 線圖
+      </a>
+      <button class="favorite-btn {% if stock_code in user_favorites %}active{% endif %}" id="favoriteBtn" data-stock="{{ stock_code }}"> ❤ </button>
+    </h2>
+    <div id="kline-detail" style="width:100%; height:400px;"></div>
+  </div>
 
-    <!-- 第二格：五檔資料 -->
-    <div class="section">
-        <h2>即時五檔掛單</h2>
-        <div id="order-book">（這裡會顯示五檔資料）</div>
-    </div>
+  <!-- 第二格：五檔資料 -->
+  <div class="section">
+    <h2>即時五檔掛單</h2>
+    <div id="order-book">（這裡會顯示五檔資料）</div>
+  </div>
 
-    <!-- 第三格：成交量圖 + 成交紀錄 -->
-    <div class="section">
-        <h2>成交資訊</h2>
-        <div class="flex-row">
-            <div class="left">
-                <div id="volume-chart">（這裡是成交量圖）</div>
-            </div>
-            <div class="right">
-                <div id="tick-data">（這裡是即時成交紀錄）</div>
-            </div>
+  <!-- 第三格：成交量圖 + 成交紀錄 -->
+  <div class="section">
+    <h2>成交資訊</h2>
+    <div class="flex-row">
+      <div class="left">
+        <div id="volume-chart">（這裡是成交量圖）</div>
+      </div>
+      <div class="right">
+        <div id="tick-data">（這裡是即時成交紀錄）</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 第四格：留言板 -->
+  <div class="section">
+    <h2>留言板</h2>
+    {% if current_user.is_authenticated %}
+      <form id="messageForm" method="POST" action="{{ url_for('board.post_message', stock_code=stock_code) }}" style="margin-bottom: 20px;">
+        <textarea name="message" rows="2" cols="80" required placeholder="輸入留言..." style="width:100%; background-color:#111; color:white; border:1px solid #444; border-radius:4px; padding:8px;"></textarea><br>
+        <button type="submit" style="margin-top:8px; padding:6px 12px; background-color:#28a745; color:white; border:none; border-radius:4px;">送出留言</button>
+      </form>
+    {% else %}
+      <p style="color:#aaa;">請先登入才能留言。</p>
+    {% endif %}
+
+    <div class="live-chat">
+      {% for message in messages %}
+        <div class="chat-message">
+          <span class="username">{{ message.user.username }}</span>：
+          <span class="content">{{ message.content }}</span>
+          <span class="timestamp">（{{ message.local_time }}）</span>
         </div>
+      {% else %}
+        <p style="color:#666;">目前沒有留言</p>
+      {% endfor %}
     </div>
+  </div>
 
-    <!-- 第四格：留言板 -->
-    <div class="section">
-        <h2>留言板</h2>
-        {% if current_user.is_authenticated %}
-            <form id="messageForm" method="POST" action="{{ url_for('board.post_message', stock_code=stock_code) }}" style="margin-bottom: 20px;">
-                <textarea name="message" rows="2" cols="80" required placeholder="輸入留言..." style="width:100%; background-color:#111; color:white; border:1px solid #444; border-radius:4px; padding:8px;"></textarea><br>
-                <button type="submit" style="margin-top:8px; padding:6px 12px; background-color:#28a745; color:white; border:none; border-radius:4px;">送出留言</button>
-            </form>
-        {% else %}
-            <p style="color:#aaa;">請先登入才能留言。</p>
-        {% endif %}
+  <!-- 主要腳本：K線 / 五檔 / 逐筆 / 收藏 / 留言 -->
+ <script>
+document.addEventListener('DOMContentLoaded', function () {
+  // ===== 基本初始化 =====
+  const socket = io();
+  const stock = {{ stock_code|tojson }};
 
-        <div class="live-chat">
-            {% for message in messages %}
-                <div class="chat-message">
-                    <span class="username">{{ message.user.username }}</span>：
-                    <span class="content">{{ message.content }}</span>
-                    <span class="timestamp">（{{ message.local_time }}）</span>
-                </div>
-            {% else %}
-                <p style="color:#666;">目前沒有留言</p>
-            {% endfor %}
-        </div>
-    </div>
+  // ✅ 先宣告，再使用（原本你放在外面，會 ReferenceError）
+  console.log('[ready] stock =', stock);
+  socket.on('connect', () => {
+  console.log('[SOCKET] connected', socket.id);
+  socket.emit('join', { stock_code: String(stock) });  // ← 放進 connect，並轉成字串
+});
 
-    <!-- Plotly 即時 K 線圖 -->
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <script>
-        async function drawDetailKline(stockCode) {
-            try {
-                const res = await fetch(`/stock/kline/${stockCode}`);
-                if (!res.ok) {
-                    console.error('Fetch failed for', stockCode, res.status);
-                    return;
-                }
-                const result = await res.json();
-                console.log(result); // 🔹 除錯用
 
-                if (!result || !result.kline || result.kline.length === 0) {
-                    document.getElementById('kline-detail').innerHTML =
-                        "<p style='color:red;text-align:center;'>查無K線資料</p>";
-                    return;
-                }
+  // ===== K 線圖 =====
+  const klineUrl = {{ url_for('stock.get_kline', stock_code=stock_code)|tojson }};
+  async function drawDetailKline(stockCode) {
+    const res = await fetch(klineUrl, { credentials:'same-origin', cache:'no-store' });
+    const result = await res.json();
+    if (!result?.kline?.length) {
+      document.getElementById('kline-detail').innerHTML = "<p style='color:red;text-align:center;'>查無K線資料</p>";
+      return;
+    }
+    const data = result.kline;
+    Plotly.newPlot('kline-detail', [{
+      x: data.map(d=>d.date),
+      open: data.map(d=>d.open),
+      high: data.map(d=>d.high),
+      low: data.map(d=>d.low),
+      close: data.map(d=>d.close),
+      type: 'candlestick',
+      increasing: { line: { color:'green' } },
+      decreasing: { line: { color:'red' } }
+    }], {
+      margin:{t:20,b:30,l:50,r:20},
+      xaxis:{ rangeslider:{ visible:false } },
+      yaxis:{ autorange:true },
+      paper_bgcolor:'#1e1e1e', plot_bgcolor:'#1e1e1e', font:{color:'#ddd'}
+    }, { displayModeBar:false });
+  }
+  drawDetailKline(stock);
 
-                // 更新標題文字和連結
-                const titleEl = document.getElementById('title-{{ stock_code }}');
-                if (titleEl && result.name) {
-                    titleEl.textContent = `${result.name}（${result.code}）`;
-                    titleEl.href = `/stock/detail/${result.code}`;
-                }
+  // ===== 五檔掛單 =====
+  function renderOrderBook(payload){
+    const el = document.getElementById('order-book'); if(!el) return;
+    const bids = (payload?.bids ?? []).slice(0,5);
+    const asks = (payload?.asks ?? []).slice(0,5);
+    const row = (side,p)=>`
+      <div style="display:flex;justify-content:space-between;padding:4px 8px;">
+        <span style="min-width:60px;text-align:${side==='bid'?'right':'left'};">${p.price?.toLocaleString?.() ?? '-'}</span>
+        <span style="opacity:.8;">×</span>
+        <span style="min-width:70px;text-align:${side==='bid'?'left':'right'};">${p.volume?.toLocaleString?.() ?? '-'}</span>
+      </div>`;
+    el.innerHTML = `
+      <div class="board" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div><div style="opacity:.8;margin-bottom:6px;">委買五檔</div>${bids.map(b=>row('bid',b)).join('')}</div>
+        <div><div style="opacity:.8;margin-bottom:6px;text-align:right;">委賣五檔</div>${asks.map(a=>row('ask',a)).join('')}</div>
+      </div>
+      <div style="margin-top:8px;font-size:12px;opacity:.7;">更新：${new Date(payload.ts||Date.now()).toLocaleTimeString()}</div>`;
+  }
+  socket.on('order_book_update', (msg)=>{
+  console.log('[BOOK]', msg);  // ← 方便看有沒有收到
+   if (String(msg.stock_code) !== String(stock)) return;  // ← 兩邊都轉字串再比
+  renderOrderBook(msg.data);
+});
 
-                // 畫圖
-                const data = result.kline;
-                const trace = {
-                    x: data.map(d => d.date),
-                    open: data.map(d => d.open),
-                    high: data.map(d => d.high),
-                    low: data.map(d => d.low),
-                    close: data.map(d => d.close),
-                    type: 'candlestick',
-                    increasing: { line: { color: 'green' } },
-                    decreasing: { line: { color: 'red' } }
-                };
-                const layout = { margin: { t: 20, b: 30 }, xaxis: { rangeslider: { visible: false } }, yaxis: { autorange: true } };
-                Plotly.newPlot('kline-detail', [trace], layout, { displayModeBar: false });
-            } catch(err) {
-                console.error('Error drawing Kline for', stockCode, err);
+  // ===== 成交量（左）＋ 逐筆（右）=====
+  const volDivId='volume-chart';
+  Plotly.newPlot(volDivId,[{x:[],y:[],type:'bar'}],{
+    margin:{t:10,b:30,l:40,r:10},
+    xaxis:{type:'date',tickformat:'%H:%M',fixedrange:true},
+    yaxis:{title:'成交量',fixedrange:true},
+    paper_bgcolor:'#1e1e1e',plot_bgcolor:'#1e1e1e',font:{color:'#ddd'}
+  },{displayModeBar:false});
+  const volBucket=new Map();
+  function upsertVolume(ts,vol){
+    const d=new Date(ts), key=d.toTimeString().slice(0,5);
+    volBucket.set(key,(volBucket.get(key)||0)+(vol||0));
+    const items=[...volBucket.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+    const now=new Date();
+    const xs=items.map(([k])=>{const [hh,mm]=k.split(':'); return new Date(now.getFullYear(),now.getMonth(),now.getDate(),+hh,+mm);});
+    const ys=items.map(([,v])=>v);
+    Plotly.react(volDivId,[{x:xs,y:ys,type:'bar'}],{
+      margin:{t:10,b:30,l:40,r:10},
+      xaxis:{type:'date',tickformat:'%H:%M',fixedrange:true},
+      yaxis:{title:'成交量',fixedrange:true},
+      paper_bgcolor:'#1e1e1e',plot_bgcolor:'#1e1e1e',font:{color:'#ddd'}
+    },{displayModeBar:false});
+  }
+  const tickList=document.getElementById('tick-data');
+  function appendTickRow(tick){
+    if(!tickList) return;
+    const color=tick.side==='buy'?'#2ecc71':tick.side==='sell'?'#e74c3c':'#bdc3c7';
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #333';
+    row.innerHTML=`<span style="min-width:70px;">${new Date(tick.ts).toLocaleTimeString()}</span>
+                   <span style="min-width:70px;text-align:right;color:${color};">${tick.price?.toLocaleString?.()}</span>
+                   <span style="min-width:60px;text-align:right;opacity:.9;">${tick.volume?.toLocaleString?.()}</span>`;
+    tickList.prepend(row);
+    while(tickList.childElementCount>200) tickList.lastChild.remove();
+  }
+ socket.on('tick_update',(msg)=>{
+  console.log('[TICK-ANY]', msg);  // ← 看有沒有收到
+  if (String(msg.stock_code) !== String(stock)) return;  // ← 兩邊轉字串
+  appendTickRow(msg.data);
+  upsertVolume(msg.data.ts, msg.data.volume);
+});
+
+
+    // （可選）要求初始化快照
+    socket.emit('request_snapshot', { stock_code: stock, ticks: 120 });
+
+    // ===== 收藏愛心 =====
+    const favBtn = document.getElementById('favoriteBtn');
+    if (favBtn) {
+      favBtn.addEventListener('click', function () {
+        const stockCode = favBtn.dataset.stock;
+        fetch(`/stock/toggle_favorite`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          body: JSON.stringify({ stock_code: stockCode })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'added') favBtn.classList.add('active');
+          else if (data.status === 'removed') favBtn.classList.remove('active');
+        })
+        .catch(console.error);
+      });
+    }
+
+    // ===== 留言板 AJAX =====
+    const form = document.getElementById('messageForm');
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const message = (formData.get('message') || '').trim();
+        if (!message) { alert('留言不能為空白'); return; }
+        fetch(form.action, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              const liveChat = document.querySelector('.live-chat');
+              const newMsg = document.createElement('div');
+              newMsg.classList.add('chat-message');
+              newMsg.innerHTML = `<span class="username">${data.username}</span>：<span class="content">${data.content}</span><span class="timestamp">（${data.local_time}）</span>`;
+              liveChat.appendChild(newMsg);
+              form.reset();
+              liveChat.scrollTop = liveChat.scrollHeight;
+            } else {
+              alert(data.error || '留言失敗');
             }
-        }
+          })
+          .catch(() => alert('伺服器錯誤'));
+      });
+    }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            drawDetailKline('{{ stock_code }}');
-
-            // 收藏愛心
-            const favBtn = document.getElementById('favoriteBtn');
-            favBtn.addEventListener('click', function() {
-                const stockCode = favBtn.dataset.stock;
-                fetch(`/stock/toggle_favorite`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    body: JSON.stringify({ stock_code: stockCode })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'added') favBtn.classList.add('active');
-                    else if (data.status === 'removed') favBtn.classList.remove('active');
-                })
-                .catch(err => console.error(err));
-            });
-
-            // 留言板 AJAX
-            const form = document.getElementById('messageForm');
-            if (form) {
-                form.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    const formData = new FormData(form);
-                    const message = formData.get('message').trim();
-                    if (!message) {
-                        alert('留言不能為空白');
-                        return;
-                    }
-                    fetch(form.action, {
-                        method: 'POST',
-                        body: formData,
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) {
-                            const liveChat = document.querySelector('.live-chat');
-                            const newMsg = document.createElement('div');
-                            newMsg.classList.add('chat-message');
-                            newMsg.innerHTML = `<span class="username">${data.username}</span>：<span class="content">${data.content}</span><span class="timestamp">（${data.local_time}）</span>`;
-                            liveChat.appendChild(newMsg);
-                            form.reset();
-                            liveChat.scrollTop = liveChat.scrollHeight;
-                        } else alert(data.error || '留言失敗');
-                    })
-                    .catch(err => {
-                        alert('伺服器錯誤');
-                        console.error(err);
-                    });
-                });
-            }
-        });
-    </script>
+    // 離開房間（可選）
+    window.addEventListener('beforeunload', function () {
+      socket.emit('leave', { stock_code: stock });
+    });
+  });
+  </script>
 </body>
 </html>
