@@ -2,71 +2,74 @@
 <html lang="zh-Hant">
 <head>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
-    <meta charset="UTF-8">
-    <title>{{ stock_code }} 詳細資訊</title>
-    <style>
-        body {
-            background-color: black;
-            color: white;
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-        .section {
-            margin: 20px auto;
-            max-width: 1200px;
-            padding: 20px;
-            background-color: #1e1e1e;
-            border-radius: 8px;
-        }
-        .section h2 {
-            border-bottom: 1px solid #444;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
-        .flex-row {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-        .left, .right {
-            flex: 1;
-            min-width: 300px;
-        }
-        img.kchart {
-            width: 100%;
-            max-height: 400px;
-            object-fit: contain;
-        }
-        .board {
-            background-color: #333;
-            padding: 10px;
-            border-radius: 4px;
-        }
-        .live-chat {
-            background-color: transparent;
-            padding: 10px;
-            max-height: 400px;
-            overflow-y: auto;
-            font-size: 15px;
-            line-height: 1.6;
-            border-top: 1px solid #444;
-            border-bottom: 1px solid #444;
-        }
-        .chat-message {
-            color: #eee;
-            margin-bottom: 6px;
-        }
-        .chat-message .username {
-            color: #4dd0e1;
-            font-weight: bold;
-        }
-        .chat-message .timestamp {
-            color: #888;
-            font-size: 12px;
-            margin-left: 6px;
-        }
-    </style>
+<!-- ✅ 改成新版 Plotly -->
+<script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+<script>
+    const stock_code = "{{ stock_code }}";
+    console.log("stock_code from template:", stock_code);
+
+    // 下面才是你原本的 fetch or 畫圖程式
+</script>
+<meta charset="UTF-8">
+<title>{{ stock_code }} 詳細資訊</title>
+<style>
+    body {
+        background-color: black;
+        color: white;
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+    }
+    .section {
+        margin: 20px auto;
+        max-width: 1200px;
+        padding: 20px;
+        background-color: #1e1e1e;
+        border-radius: 8px;
+    }
+    .section h2 {
+        border-bottom: 1px solid #444;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+    .flex-row {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+    .left, .right {
+        flex: 1;
+        min-width: 300px;
+    }
+    .board {
+        background-color: #333;
+        padding: 10px;
+        border-radius: 4px;
+    }
+    .live-chat {
+        background-color: transparent;
+        padding: 10px;
+        max-height: 400px;
+        overflow-y: auto;
+        font-size: 15px;
+        line-height: 1.6;
+        border-top: 1px solid #444;
+        border-bottom: 1px solid #444;
+    }
+    .chat-message {
+        color: #eee;
+        margin-bottom: 6px;
+    }
+    .chat-message .username {
+        color: #4dd0e1;
+        font-weight: bold;
+    }
+    .chat-message .timestamp {
+        color: #888;
+        font-size: 12px;
+        margin-left: 6px;
+    }
+</style>
 </head>
 <body>
 <div style="position: fixed; top: 10px; right: 20px; z-index: 1000; font-weight: bold; color: white; cursor: pointer;">
@@ -84,7 +87,8 @@
 <!-- 第一格：K 線圖 -->
 <div class="section">
     <h2>{{ stock_code }} K 線圖</h2>
-    <img class="kchart" src="{{ url_for('static', filename='kcharts/' + stock_code + '.png') }}" alt="{{ stock_code }} K 線圖">
+    <!-- ✅ 改成動態載入 Plotly -->
+    <div id="kline-chart" style="width:100%; height:400px;"></div>
 </div>
 
 <!-- 第二格：五檔資料 -->
@@ -131,16 +135,46 @@
     </div>
 </div>
 
-<!-- 留言板 JS -->
+<!-- JS -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     const socket = io();
     const stock = "{{ stock_code }}";
 
-    // 加入股票聊天室房間
+    // ✅ 抓後端 kline API 畫圖
+    try {
+        const res = await fetch(`/stock/kline/${stock}`);
+        const result = await res.json();
+
+        if (result && result.kline && result.kline.length > 0) {
+            const data = result.kline;
+            const trace = {
+                x: data.map(d => d.date),
+                open: data.map(d => d.open),
+                high: data.map(d => d.high),
+                low: data.map(d => d.low),
+                close: data.map(d => d.close),
+                type: 'candlestick',
+                increasing: { line: { color: 'green' } },
+                decreasing: { line: { color: 'red' } }
+            };
+            const layout = {
+                margin: { t: 20, b: 40 },
+                xaxis: { rangeslider: { visible: false } },
+                yaxis: { autorange: true }
+            };
+            Plotly.newPlot('kline-chart', [trace], layout, { displayModeBar: false });
+        } else {
+            document.getElementById('kline-chart').innerHTML =
+              "<p style='color:red;text-align:center;'>查無K線資料</p>";
+        }
+    } catch (err) {
+        console.error("K線載入失敗", err);
+    }
+
+    // ====== 留言 & 收藏區域 ======
     socket.emit('join', { stock_code: stock });
 
-    // 留言送出
     const form = document.getElementById('messageForm');
     if (form) {
         form.addEventListener('submit', function(e) {
@@ -156,7 +190,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 監聽後端推送的新留言，動態更新留言板
     socket.on('new_message', function(data) {
         if (data.stock_code !== stock) return;
         const liveChat = document.querySelector('.live-chat');
@@ -167,21 +200,16 @@ document.addEventListener('DOMContentLoaded', function() {
         liveChat.scrollTop = liveChat.scrollHeight;
     });
 
-    // 收藏按鈕事件：用 socket.emit 發送
     const favBtn = document.getElementById('favorite-btn');
     const icon = document.getElementById('favorite-icon');
-
     favBtn.addEventListener('click', function() {
         socket.emit('toggle_favorite', { stock_code: stock });
     });
-
-    // 監聽收藏狀態變更，更新圖示
     socket.on('favorite_update', function(data) {
         if (data.stock_code !== stock) return;
         icon.textContent = data.favorited ? '❤️' : '♡';
     });
 
-    // 離開房間（可選）
     window.addEventListener('beforeunload', function() {
         socket.emit('leave', { stock_code: stock });
     });

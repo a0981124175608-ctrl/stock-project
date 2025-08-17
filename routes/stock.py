@@ -110,7 +110,7 @@ def get_kline(stock_code):
         })
     except Exception as e:
         return jsonify({"error": str(e)})
-        return jsonify({"error": str(e)})
+    
 @stock_bp.route('/stock_name/<stock_code>')
 @login_required
 def get_stock_name(stock_code):

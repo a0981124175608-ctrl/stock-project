@@ -60,13 +60,12 @@
                 return;
             }
 
-            // 更新標題文字和連結
-            if (titleId && result.name) {
-                const titleEl = document.getElementById(titleId);
-                titleEl.textContent = `${result.name}（${result.code}）`;
-                titleEl.href = `/stock/detail/${result.code}`;
-            }
-
+           // 更新標題文字和連結（用傳入的 stockCode，不依賴 result.code）
+	   if (titleId && result.name) {
+  	    const titleEl = document.getElementById(titleId);
+ 	    titleEl.textContent = `${result.name}（${stockCode}）`;
+  	    titleEl.href = `/stock/detail/${encodeURIComponent(stockCode)}`;
+}
             // 畫圖
             const data = result.kline;
             const trace = {
